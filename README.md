@@ -23,9 +23,10 @@ ___
   * [AWS Public Elastic Container Registry (ECR)](#aws-public-elastic-container-registry-ecr)
   * [OCI Oracle Cloud Infrastructure Registry (OCIR)](#oci-oracle-cloud-infrastructure-registry-ocir)
   * [Quay.io](#quayio)
+  * [DigitalOcean](#digitalocean-container-registry)
 * [Customizing](#customizing)
   * [inputs](#inputs)
-* [Keep up-to-date with GitHub Dependabot](#keep-up-to-date-with-github-dependabot)
+* [Contributing](#contributing)
 
 ## Usage
 
@@ -50,7 +51,7 @@ jobs:
         name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 ```
 
@@ -104,7 +105,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: registry.gitlab.com
-          username: ${{ secrets.GITLAB_USERNAME }}
+          username: ${{ vars.GITLAB_USERNAME }}
           password: ${{ secrets.GITLAB_PASSWORD }}
 ```
 
@@ -135,7 +136,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: <registry-name>.azurecr.io
-          username: ${{ secrets.AZURE_CLIENT_ID }}
+          username: ${{ vars.AZURE_CLIENT_ID }}
           password: ${{ secrets.AZURE_CLIENT_SECRET }}
 ```
 
@@ -198,8 +199,7 @@ jobs:
 Use a service account with permission to push to GCR and [configure access control](https://cloud.google.com/container-registry/docs/access-control).
 Download the key for the service account as a JSON file. Save the contents of
 the file [as a secret](https://docs.github.com/en/actions/configuring-and-managing-workflows/creating-and-storing-encrypted-secrets#creating-encrypted-secrets-for-a-repository)
-named `GCR_JSON_KEY` in your GitHub repository. Set the username to `_json_key`,
-or `_json_key_base64` if you use a base64-encoded key.
+named `GCR_JSON_KEY` in your GitHub repository. Set the username to `_json_key`.
 
 ```yaml
 name: ci
@@ -227,10 +227,9 @@ You can authenticate with workload identity federation or a service account.
 
 #### Workload identity federation
 
-Download the key for the service account as a JSON file. Save the contents of
-the file [as a secret](https://docs.github.com/en/actions/configuring-and-managing-workflows/creating-and-storing-encrypted-secrets#creating-encrypted-secrets-for-a-repository)
-named `GCR_JSON_KEY` in your GitHub repository. Set the username to `_json_key`,
-or `_json_key_base64` if you use a base64-encoded key.
+Your service account must have permission to push to GAR. Use the
+`google-github-actions/auth` action to authenticate using workload identity as
+shown in the following example:
 
 ```yaml
 name: ci
@@ -274,7 +273,7 @@ jobs:
 Use a service account with permission to push to GAR and [configure access control](https://cloud.google.com/artifact-registry/docs/access-control).
 Download the key for the service account as a JSON file. Save the contents of
 the file [as a secret](https://docs.github.com/en/actions/configuring-and-managing-workflows/creating-and-storing-encrypted-secrets#creating-encrypted-secrets-for-a-repository)
-named `GCR_JSON_KEY` in your GitHub repository. Set the username to `_json_key`,
+named `GAR_JSON_KEY` in your GitHub repository. Set the username to `_json_key`,
 or `_json_key_base64` if you use a base64-encoded key.
 
 ```yaml
@@ -322,7 +321,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: <aws-account-number>.dkr.ecr.<region>.amazonaws.com
-          username: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          username: ${{ vars.AWS_ACCESS_KEY_ID }}
           password: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 ```
 
@@ -345,7 +344,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: <aws-account-number>.dkr.ecr.<region>.amazonaws.com
-          username: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          username: ${{ vars.AWS_ACCESS_KEY_ID }}
           password: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         env:
           AWS_ACCOUNT_IDS: 012345678910,023456789012
@@ -371,7 +370,7 @@ jobs:
         name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id: ${{ vars.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: <region>
       -
@@ -406,7 +405,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: public.ecr.aws
-          username: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          username: ${{ vars.AWS_ACCESS_KEY_ID }}
           password: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         env:
           AWS_REGION: <region>
@@ -440,7 +439,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: <region>.ocir.io
-          username: ${{ secrets.OCI_USERNAME }}
+          username: ${{ vars.OCI_USERNAME }}
           password: ${{ secrets.OCI_TOKEN }}
 ```
 
@@ -467,8 +466,32 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
+          username: ${{ vars.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+```
+
+### DigitalOcean Container Registry
+
+Use your DigitalOcean registered email address and an API access token to authenticate.
+
+```yaml
+name: ci
+
+on:
+  push:
+    branches: main
+
+jobs:
+  login:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Login to DigitalOcean Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: registry.digitalocean.com
+          username: ${{ vars.DIGITALOCEAN_USERNAME }}
+          password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 ```
 
 ## Customizing
@@ -485,18 +508,7 @@ The following inputs can be used as `step.with` keys:
 | `ecr`      | String | `auto`  | Specifies whether the given registry is ECR (`auto`, `true` or `false`)       |
 | `logout`   | Bool   | `true`  | Log out from the Docker registry at the end of a job                          |
 
-## Keep up-to-date with GitHub Dependabot
+## Contributing
 
-Since [Dependabot](https://docs.github.com/en/github/administering-a-repository/keeping-your-actions-up-to-date-with-github-dependabot)
-has [native GitHub Actions support](https://docs.github.com/en/github/administering-a-repository/configuration-options-for-dependency-updates#package-ecosystem),
-to enable it on your GitHub repo all you need to do is add the `.github/dependabot.yml` file:
-
-```yaml
-version: 2
-updates:
-  # Maintain dependencies for GitHub Actions
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "daily"
-```
+Want to contribute? Awesome! You can find information about contributing to
+this project in the [CONTRIBUTING.md](/.github/CONTRIBUTING.md)
