@@ -1,5 +1,8 @@
 name: validate
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -15,16 +18,17 @@ jobs:
   prepare:
     runs-on: ubuntu-latest
     outputs:
-      targets: ${{ steps.targets.outputs.matrix }}
+      matrix: ${{ steps.generate.outputs.matrix }}
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       -
-        name: Targets matrix
-        id: targets
-        run: |
-          echo "matrix=$(docker buildx bake validate --print | jq -cr '.group.validate.targets')" >> $GITHUB_OUTPUT
+        name: Generate matrix
+        id: generate
+        uses: docker/bake-action/subaction/matrix@d3418bd7d0e9324001bca92fa8ba175ea7e6dc9b # v7.3.0
+        with:
+          target: validate
 
   validate:
     runs-on: ubuntu-latest
@@ -33,13 +37,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: ${{ fromJson(needs.prepare.outputs.targets) }}
+        include: ${{ fromJson(needs.prepare.outputs.matrix) }}
     steps:
       -
-        name: Checkout
-        uses: actions/checkout@v4
-      -
         name: Validate
-        uses: docker/bake-action@v4
+        uses: docker/bake-action@d3418bd7d0e9324001bca92fa8ba175ea7e6dc9b # v7.3.0
         with:
           targets: ${{ matrix.target }}

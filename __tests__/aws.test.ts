@@ -1,7 +1,7 @@
-import {beforeEach, describe, expect, jest, test} from '@jest/globals';
+import {beforeEach, describe, expect, test, vi} from 'vitest';
 import {AuthorizationData} from '@aws-sdk/client-ecr';
 
-import * as aws from '../src/aws';
+import * as aws from '../src/aws.js';
 
 describe('isECR', () => {
   test.each([
@@ -10,7 +10,10 @@ describe('isECR', () => {
     ['012345678901.dkr.ecr.eu-west-3.amazonaws.com', true],
     ['876820548815.dkr.ecr.cn-north-1.amazonaws.com.cn', true],
     ['390948362332.dkr.ecr.cn-northwest-1.amazonaws.com.cn', true],
-    ['public.ecr.aws', true]
+    ['012345678901.dkr-ecr.eu-north-1.on.aws', true],
+    ['012345678901.dkr.ecr.eusc-de-east-1.amazonaws.eu', true],
+    ['public.ecr.aws', true],
+    ['ecr-public.aws.com', true]
   ])('given registry %p', async (registry, expected) => {
     expect(aws.isECR(registry)).toEqual(expected);
   });
@@ -23,7 +26,10 @@ describe('isPubECR', () => {
     ['012345678901.dkr.ecr.eu-west-3.amazonaws.com', false],
     ['876820548815.dkr.ecr.cn-north-1.amazonaws.com.cn', false],
     ['390948362332.dkr.ecr.cn-northwest-1.amazonaws.com.cn', false],
-    ['public.ecr.aws', true]
+    ['012345678901.dkr-ecr.eu-north-1.on.aws', false],
+    ['012345678901.dkr.ecr.eusc-de-east-1.amazonaws.eu', false],
+    ['public.ecr.aws', true],
+    ['ecr-public.aws.com', true]
   ])('given registry %p', async (registry, expected) => {
     expect(aws.isPubECR(registry)).toEqual(expected);
   });
@@ -34,6 +40,8 @@ describe('getRegion', () => {
     ['012345678901.dkr.ecr.eu-west-3.amazonaws.com', 'eu-west-3'],
     ['876820548815.dkr.ecr.cn-north-1.amazonaws.com.cn', 'cn-north-1'],
     ['390948362332.dkr.ecr.cn-northwest-1.amazonaws.com.cn', 'cn-northwest-1'],
+    ['012345678901.dkr-ecr.eu-north-1.on.aws', 'eu-north-1'],
+    ['012345678901.dkr.ecr.eusc-de-east-1.amazonaws.eu', 'eusc-de-east-1'],
     ['public.ecr.aws', 'us-east-1']
   ])('given registry %p', async (registry, expected) => {
     expect(aws.getRegion(registry)).toEqual(expected);
@@ -46,6 +54,8 @@ describe('getAccountIDs', () => {
     ['012345678901.dkr.ecr.eu-west-3.amazonaws.com', '012345678910,023456789012', ['012345678901', '012345678910', '023456789012']],
     ['012345678901.dkr.ecr.eu-west-3.amazonaws.com', '012345678901,012345678910,023456789012', ['012345678901', '012345678910', '023456789012']],
     ['390948362332.dkr.ecr.cn-northwest-1.amazonaws.com.cn', '012345678910,023456789012', ['390948362332', '012345678910', '023456789012']],
+    ['876820548815.dkr-ecr.eu-north-1.on.aws', '012345678910,023456789012', ['876820548815', '012345678910', '023456789012']],
+    ['012345678901.dkr.ecr.eusc-de-east-1.amazonaws.eu', '012345678910,023456789012', ['012345678901', '012345678910', '023456789012']],
     ['public.ecr.aws', undefined, []]
   ])('given registry %p', async (registry, accountIDsEnv, expected) => {
     if (accountIDsEnv) {
@@ -55,26 +65,28 @@ describe('getAccountIDs', () => {
   });
 });
 
-const mockEcrGetAuthToken = jest.fn();
-const mockEcrPublicGetAuthToken = jest.fn();
-jest.mock('@aws-sdk/client-ecr', () => {
+const mockEcrGetAuthToken = vi.fn();
+const mockEcrPublicGetAuthToken = vi.fn();
+vi.mock('@aws-sdk/client-ecr', () => {
+  class ECR {
+    getAuthorizationToken = mockEcrGetAuthToken;
+  }
   return {
-    ECR: jest.fn(() => ({
-      getAuthorizationToken: mockEcrGetAuthToken
-    }))
+    ECR
   };
 });
-jest.mock('@aws-sdk/client-ecr-public', () => {
+vi.mock('@aws-sdk/client-ecr-public', () => {
+  class ECRPUBLIC {
+    getAuthorizationToken = mockEcrPublicGetAuthToken;
+  }
   return {
-    ECRPUBLIC: jest.fn(() => ({
-      getAuthorizationToken: mockEcrPublicGetAuthToken
-    }))
+    ECRPUBLIC
   };
 });
 
 describe('getRegistriesData', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     delete process.env.AWS_ACCOUNT_IDS;
   });
   // prettier-ignore
